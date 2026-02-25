@@ -32,21 +32,21 @@
         
         ### Filter data
         arch4metaFilt <- 
-          arch4meta %>% 
-          as_tibble() %>% 
-          group_by(study) %>% 
+          arch4meta |> 
+          as_tibble() |> 
+          group_by(study) |> 
           mutate(
             medianScProb = median(singleCellProb),
             n_samples = n()
-          ) %>% 
+          ) |> 
           filter(
             organism == 'Homo sapiens',
             type == 'SRA',
             library_selection == 'cDNA',
             medianScProb <= 1/3,
             readsAlligned >= 10e6
-          ) %>% 
-          ungroup() %>% 
+          ) |> 
+          ungroup() |> 
           arrange(study)
         
         nrow(arch4metaFilt)
