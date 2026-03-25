@@ -23,7 +23,7 @@ subtypes <- read_tsv("/home/databases/tcga/TCGASubtype.20170308.tsv.gz") |>
   janitor::clean_names()
 
 # Load survival data
-survival_dat <- read_delim("/home/databases/tcga/Survival_SupplementalTable_S1_20171025_xena_sp.txt") |> 
+survival_dat <- readr::read_delim("/home/databases/tcga/Survival_SupplementalTable_S1_20171025_xena_sp.txt") |> 
   janitor::clean_names()
 
 # Load Immune subtype file
@@ -113,3 +113,28 @@ x <- final_cancer_df |>
 # write out excel for final_cancer_df
 writexl::write_xlsx(x = final_cancer_df,
                     path = "data/metadata_tcga/all_cancer_subtypes.xlsx")
+
+
+
+
+# Loading annotation of transcript and genes
+load("/home/databases/tcga/gencode.v23.chr_patch_hapl_scaff.annotation.Rdata")
+
+
+# Creating vectorized Dframe
+anno <- S4Vectors::mcols(gen23)
+
+# Pulling only ENST and ENSG IDs from annotation
+enst_ensg_annotation <- unique(data.frame(
+  transcript_id = anno$transcript_id,
+  gene_id = anno$gene_id,
+  stringsAsFactors = FALSE
+))
+
+# Dropping NA transcripts
+enst_ensg_filtered <- enst_ensg_annotation[!is.na(enst_ensg_annotation$transcript_id), ]
+
+# Matching gene IDs and transcript IDs
+matched_gene_id <- enst_ensg_filtered$gene_id[match(transcripts, enst_ensg_filtered$transcript_id)]
+
+saveRDS(matched_gene_id, "data/metadata_tcga/genes.rds")
