@@ -64,27 +64,25 @@ data_mine_disease <- function(metadata_path,
   writexl::write_xlsx(x = all_matching_metadata, path = paste0("data/metadata_archs4/", disease_name, "_metadata_filtered.xlsx"))
   
 }
-{
-  ## Usage example
-  # data_mine_disease(metadata_path = "data/metadata_archs4/01_archs4_filtered_metadata.rds",
-  #                            keywords = c("APOE4", "microglia"),
-  #                            disease_name = "AD")
-}
+
+
 # Function to run pairedGSEA
 ## Function runs paired_diff for any kind of RNA-seq data with the new setup of having one comparisons file and one samples file.
 ## 
 ##
-
-run_paired_diff <- function(n_cores = 12,
+run_paired_diff <- function(n_cores = 4,
                             curated_comparison_file_path,
                             curated_samples_file_path,
-                            curated_tcga_file_path,
+                            curated_tcga_file_path = "data/curated_tcga/BRCA_LumA.xlsx",
                             archs4 = FALSE
                             ) 
 {
   
   # Register cores
-  doMC::registerDoMC(cores = n_cores)
+  if (archs4) {
+    doMC::registerDoMC(cores = n_cores)
+  }
+    
   
   if (archs4){
     # Read in the two curated paired datasets "disease_comparisons" and "disease_samples"
@@ -105,7 +103,11 @@ run_paired_diff <- function(n_cores = 12,
     samples_comparison <- readxl::read_xlsx(curated_tcga_file_path) |> 
       dplyr::rename(age = age_at_initial_pathologic_diagnosis,
              stage = ajcc_pathologic_tumor_stage) |> 
-      dplyr::mutate(sample = gsub("-", "_", sample))
+      dplyr::mutate(sample = gsub("-", "_", sample)) |> 
+      tidyr::drop_na(age,
+                     gender,
+                     stage) |> 
+      dplyr::filter(!stage %in% c("[Discrepancy]", "[Unknown]"))
     
       
   }
@@ -156,14 +158,6 @@ run_paired_diff <- function(n_cores = 12,
     samples <- gsub("-", "_", colnames(tcgaIsoCount))
   }
   
-  ## genes
-  if (archs4){
-    archs4_genes_file <- "/home/databases/archs4/v2.latest/human_tpm_v2.latest.h5"
-    genes <- rhdf5::h5read(file = archs4_genes_file,
-                           name = "meta/transcripts/ensembl_gene")
-  } else {
-    genes <- readr::read_rds("data/metadata_tcga/genes.rds")
-  }
   
   ## transcripts
   if (archs4){
@@ -172,6 +166,16 @@ run_paired_diff <- function(n_cores = 12,
                                  name = "meta/transcripts/ensembl_id")
   } else {
     transcripts <- rownames(tcgaIsoCount)
+  }
+  
+  ## genes
+  if (archs4){
+    archs4_genes_file <- "/home/databases/archs4/v2.latest/human_tpm_v2.latest.h5"
+    genes <- rhdf5::h5read(file = archs4_genes_file,
+                           name = "meta/transcripts/ensembl_gene")
+  } else {
+    
+    genes <- readr::read_rds("/home/projects2/kvs_students/2026/sy_common_disease_iso/CrossDiseaseIsoformsR/data/metadata_tcga/genes.rds")
   }
   
   # Filter and collect samples curated in the count matrices
@@ -196,14 +200,8 @@ run_paired_diff <- function(n_cores = 12,
   # Assigning rownames
   if (archs4) {
     exp_row_names <- character(nrow(genes))
-    
   } else {
-    
-    # only read file if not already loaded
-    if (!exists("all_IDS")) {
-      all_IDS <- readr::read_tsv("data/mart_export.txt") |> 
-        janitor::clean_names()
-    }
+    exp_row_names <- character(length(transcripts))
   }
   
   
@@ -215,17 +213,9 @@ run_paired_diff <- function(n_cores = 12,
                                  transcripts[i])
     }
   } else {
-    # Removing prefixes and 
-    exp_row_names <- paste(
-      all_IDS$gene_stable_id[
-        match(
-          sub("\\..*$", "", transcripts),
-          sub("\\..*$", "", all_IDS$transcript_stable_id)
-        )
-      ],
-      sub("\\..*$", "", transcripts),
-      sep=":"
-    )
+    for (i in 1:length(genes)) {
+      exp_row_names[i] <- paste0(genes[i], ":", transcripts[i])
+    }
   }
   
   # Assign the row names and column names to the data frame
@@ -238,6 +228,7 @@ run_paired_diff <- function(n_cores = 12,
     colnames(expression) <- gsub("-", "_", colnames(expression))
       
   }
+  
   # Subset expression matrix/dataframe 
   if (archs4){
     list_studies_merged_filt <- study_specific_merge |>
@@ -271,8 +262,10 @@ run_paired_diff <- function(n_cores = 12,
     .progress = 'text',
     .fun = function(aDF) {
       
-      ### For devel
-      #aDF <- study_cond_desc_list[["BRCA : 6 vs 1"]]
+      ### For devel and debug
+      # TCGA
+      #aDF <- study_cond_desc_list[["BRCA : 6 vs 3"]]
+      # ARCHS4
       #aDF <- study_cond_desc_list[["GSE116899 : 1 vs 2"]]
       
       
@@ -294,9 +287,10 @@ run_paired_diff <- function(n_cores = 12,
       } else {
         local_study_info <- list_studies_merged_filt |>
           dplyr::select(-comparison, 
-                        -description) |>
+                        -description,
+                        -Subtype_Immune_Model_Based,
+                        -cancer_type_abbreviation) |>
           dplyr::filter(
-            cancer_type_abbreviation == aDF$cancer_type_abbreviation,
             condition %in% local_condition) |> 
           dplyr::mutate(sample = gsub("-", "_", sample)) |> 
           tidyr::drop_na(age,
@@ -308,12 +302,14 @@ run_paired_diff <- function(n_cores = 12,
       # Minimum count for each condition
       min_count <- min(table(local_study_info$condition))
       if(min_count < 2) {
+        message("The minimum required of samples for each condition is 2, local_study_info do not have that.")
         return(NULL)
       }
       
       # Each subset/comparison needs to have 2 conditions check!
       cond_count <- length(unique(local_study_info$condition))
       if(cond_count != 2){
+        message("There is not two different conditions in local_study_info")
         return(NULL)
       }
       
@@ -322,17 +318,28 @@ run_paired_diff <- function(n_cores = 12,
       
       covariate_arg <- if (all(covariate_cols %in% colnames(local_study_info))) {
         
-        # Keep only columns with more than 1 unique value (excluding NA)
         valid_covariates <- covariate_cols[
           sapply(covariate_cols, function(col) {
-            length(unique(na.omit(local_study_info[[col]]))) > 1
+            n_unique <- length(unique(na.omit(local_study_info[[col]])))
+            
+            if (col == "gender") {
+              n_unique > 1
+            } else {
+              n_unique > 5
+            }
           })
         ]
         
         # Return NULL if none remain
-        if (length(valid_covariates) > 0) valid_covariates else NULL
+        if (length(valid_covariates) > 0) {
+          valid_covariates
+        } else {
+          message("No valid covariates (age, gender, stage) have more than one unique non-NA value.")
+          NULL
+        }
         
       } else {
+        message("Not all required covariate columns (age, gender, stage) are present.")
         NULL
       }
       
@@ -341,7 +348,6 @@ run_paired_diff <- function(n_cores = 12,
         expression_obj <- expression[,local_study_info$gsm_id]
       } else {
         expression_obj <- expression[,local_study_info$sample]
-        expression_obj <- expression_obj[!startsWith(rownames(expression_obj), "NA:"), ]
       }
       
       # Sample column archs4 or TCGA
@@ -368,8 +374,9 @@ run_paired_diff <- function(n_cores = 12,
           experiment_title = aDF$description,
           covariates = covariate_arg
         )
-      }, error = {
-        function(a) {return(NULL)}
+      }, error = function(e) {
+        message("paired_diff failed: ", conditionMessage(e))
+        NULL
       })
       
       
@@ -379,6 +386,7 @@ run_paired_diff <- function(n_cores = 12,
     }  
   )
 }
+
 
 # Function to run all tcga datasets with run_paired_diff
 ## 
@@ -412,9 +420,10 @@ run_all_tcga <- function(tcga_dir, n_cores, out_dir) {
       archs4 = FALSE
     )
     
-    saveRDS(paired_diff_results, file = out_file)
+    readr::write_rds(paired_diff_results, file = out_file)
   }
 }
+
 
 # Function to run all archs4 datasets with run_paired_diff
 ## 
@@ -422,7 +431,10 @@ run_all_tcga <- function(tcga_dir, n_cores, out_dir) {
 ##
 run_all_archs4 <- function(datasets, base_dir, n_cores, out_dir) {
   
-  dir.create(out_dir)
+  # Create directory only if it doesn't exist
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
   
   for (d in datasets) {
     
@@ -439,7 +451,7 @@ run_all_archs4 <- function(datasets, base_dir, n_cores, out_dir) {
       archs4 = TRUE
     )
     
-    saveRDS(
+    readr::write_rds(
       paired_diff_results,
       file = file.path(out_dir, paste0(d, "_paired_diff.rds"))
     )
@@ -452,7 +464,11 @@ run_all_archs4 <- function(datasets, base_dir, n_cores, out_dir) {
 ## 
 ##
 
-combine_lists_to_df <- function(pairedGSEA_list = paired_diff_results) {
+combine_lists_to_df <- function(pairedGSEA_list = paired_diff_results,
+                                n_cores) {
+  
+  # Register n cores
+  doMC::registerDoMC(cores = n_cores)
   
   # apply tibble class to lists
   paired_tibble <- lapply(pairedGSEA_list, tibble::as_tibble)
@@ -464,3 +480,124 @@ combine_lists_to_df <- function(pairedGSEA_list = paired_diff_results) {
   )
   
 }
+
+
+# Function count expression and splicing features
+## 
+## 
+##
+counting_features <- function(path = "data/paired_diff_archs4/", 
+                              padj_score = "padj_splicing",
+                              new_path = "data/counting_features_archs4/",
+                              ...){
+  
+  # Create new directory if not present
+  if (!dir.exists(new_path)) {
+    dir.create(new_path)
+  }
+  
+  # List all files to perform counting of features on
+  files <- list.files(path = path, pattern = "\\.rds$", full.names = TRUE)
+  
+  # Walk across all files listed 
+  purrr::walk(files, function(f) {
+    
+    # Converting lists to dataframe
+    data <- readr::read_rds(f) |>
+      combine_lists_to_df(...)
+    
+    # Counting features 
+    result <- data |>
+      dplyr::filter(.data[[padj_score]] < 0.05) |>
+      dplyr::count(gene, name = "n") |>
+      dplyr::arrange(desc(n))
+    
+    # Creating new filename
+    new_name <- basename(f) |>
+      stringr::str_remove("paired_diff") |>
+      stringr::str_replace("\\.rds$", 
+                           paste0("feature_counts_", padj_score, ".rds"))
+    
+    # New path with addition of new filename
+    out_path <- file.path(new_path, new_name)
+    
+    # Write new RDS file
+    readr::write_rds(result, out_path)
+    
+  })
+}
+
+
+# Function collects genesets and count both expression and splicing
+## 
+## 
+##
+counting_genesets <- function(path_to_pd_objects,
+                              padj_score,
+                              out_dir,
+                              genesets = NULL,
+                              ...) {
+  
+  # Register n cores
+  doMC::registerDoMC(cores = n_cores)
+  
+  # Create output directory if needed
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
+  
+  # List all input files
+  files <- list.files(
+    path = path_to_pd_objects, 
+    pattern = "\\.rds$", 
+    full.names = TRUE)
+  
+  # Read in genesets once
+  if (is.null(genesets)) {
+    genesets <- readr::read_rds(
+      "/home/projects2/kvs_students/2026/sy_common_disease_iso/CrossDiseaseIsoformsR/data/genesets/genesets.rds"
+    )
+  }
+  
+  # Loop over files
+  purrr::walk(files, function(f) {
+    
+    # Parsing old name to set new name
+    new_base_fname <- gsub(
+      "paired_diff",
+      "",
+      tools::file_path_sans_ext(basename(f))
+    )
+    
+    # Read in data and combine to dataframe
+    data <- readr::read_rds(file = f) |>
+      combine_lists_to_df()
+    
+    pairedOraResults <- plyr::dlply(
+      .data = data,
+      .variables = c(".id"),
+      .parallel = TRUE,
+      .fun = function(data) {
+        pairedGSEA::paired_ora(
+          paired_diff_result = data,
+          gene_sets = genesets
+        )
+      }
+    ) |>
+      combine_lists_to_df(...)
+    
+    ora_results <- pairedOraResults |>
+      dplyr::filter(.data[[padj_score]] < 0.05) |>
+      dplyr::count(pathway, name = "n") |>
+      dplyr::arrange(desc(n))
+    
+    # Build output file path
+    out_file <- file.path(out_dir, paste0(new_base_fname, "ora_results.rds"))
+    
+    # Save result
+    saveRDS(ora_results, file = out_file)
+    
+    message("Saved: ", out_file)
+  })
+}
+
