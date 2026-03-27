@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --job-name=tcga_pd
+#SBATCH --partition=gpu
+#SBATCH --output=logs/tcga_pd_%A_%a.out
+#SBATCH --error=logs/tcga_pd_%A_%a.err
+#SBATCH --array=0-48
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=45G
+#SBATCH --time=48:00:00
+
+R_SCRIPT="/home/ctools/opt/R-4.4.1/bin/Rscript"
+
+TCGA_FILES=(../data/curated_tcga/*.xlsx)
+TCGA_FILE="${TCGA_FILES[$SLURM_ARRAY_TASK_ID]}"
+
+echo "Running dataset: ${DATASET}"
+echo "Job ID: ${SLURM_JOB_ID}"
+echo "Array task ID: ${SLURM_ARRAY_TASK_ID}"
+
+
+$R_SCRIPT ../R/01_run_archs4_pairedGSEA.R ${DATASET}
