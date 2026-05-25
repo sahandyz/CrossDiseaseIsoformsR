@@ -6,3 +6,7 @@ data
 results
 bash/results
 bash/logs
+R/pairedGSEA
+plots
+plots_genesets
+pairedGSEA.tar.gz
