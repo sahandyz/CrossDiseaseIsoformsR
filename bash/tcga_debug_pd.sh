@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=45G
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
 
 R_SCRIPT="/home/ctools/opt/R-4.4.1/bin/Rscript"
 

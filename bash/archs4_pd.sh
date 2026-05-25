@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=archs4_pd
-#SBATCH --partition=gpu
+#SBATCH --partition=cpu
 #SBATCH --output=logs/archs4_pd_%A_%a.out
 #SBATCH --error=logs/archs4_pd_%A_%a.err
-#SBATCH --array=0-7
-#SBATCH --cpus-per-task=8
+#SBATCH --array=0-7%2
+#SBATCH --cpus-per-task=10
 #SBATCH --mem=45G
-#SBATCH --time=48:00:00
+#SBATCH --time=12:00:00
 
 mkdir -p logs
 
