@@ -1,4 +1,4 @@
-source(file = "/home/projects2/kvs_students/2026/sy_common_disease_iso/CrossDiseaseIsoformsR/R/00_functions.R")
+source("R/00_functions.R")
 
 # Counting features for expression and saving them in data/counting_features_archs4
 counting_features(
