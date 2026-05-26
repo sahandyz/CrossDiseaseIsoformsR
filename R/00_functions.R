@@ -1698,6 +1698,7 @@ sampled_cutoff <- function(
     seed = 123,
     expression_padj_col = "padj_expression",
     splicing_padj_col = "padj_splicing",
+    feature_col = "gene",
     min_studies_range = 1:6
 ) {
   set.seed(seed)
@@ -1707,66 +1708,74 @@ sampled_cutoff <- function(
     min_datasets = seq_along(dfs)
   )
   
-  prep_gene_study_counts <- function(padj_col) {
+  full_universe <- dfs |>
+    purrr::imap_dfr(~ .x |>
+                      dplyr::distinct(
+                        dataset = .y,
+                        .id,
+                        feature = .data[[feature_col]]
+                      )
+    )
+  
+  feature_universe <- full_universe |>
+    dplyr::distinct(dataset, feature)
+  
+  get_x_by_dataset <- function(padj_col) {
     dfs |>
       purrr::imap_dfr(~ .x |>
                         dplyr::filter(
                           !is.na(.data[[padj_col]]),
                           .data[[padj_col]] < padj_thresh
                         ) |>
-                        dplyr::distinct(.id, gene) |>
-                        dplyr::mutate(dataset = .y)
-      )
+                        dplyr::distinct(dataset = .y, feature = .data[[feature_col]])
+      ) |>
+      dplyr::count(dataset, name = "n_to_sample")
   }
   
   run_signal <- function(padj_col, signal_type) {
-    gene_study_counts <- prep_gene_study_counts(padj_col)
+    x_by_dataset <- get_x_by_dataset(padj_col)
     
-    x <- gene_study_counts |>
-      dplyr::distinct(dataset, gene) |>
-      dplyr::count(dataset, name = "n_sig_genes") |>
-      dplyr::summarise(x = min(n_sig_genes, na.rm = TRUE)) |>
-      dplyr::pull(x)
-    
-    sampled_results <- purrr::map_dfr(seq_len(n_repeats), function(repeat_id) {
+    purrr::map_dfr(seq_len(n_repeats), function(repeat_id) {
       
-      sampled_genes <- gene_study_counts |>
-        dplyr::distinct(dataset, gene) |>
-        dplyr::group_by(dataset) |>
-        dplyr::slice_sample(n = x) |>
-        dplyr::ungroup()
+      sampled_features <- feature_universe |>
+        dplyr::left_join(x_by_dataset, by = "dataset") |>
+        dplyr::mutate(n_to_sample = tidyr::replace_na(n_to_sample, 0L)) |>
+        dplyr::group_split(dataset) |>
+        purrr::map_dfr(function(df) {
+          n_to_sample <- unique(df$n_to_sample)
+          n_to_sample <- min(n_to_sample, nrow(df))
+          
+          df |>
+            dplyr::slice_sample(n = n_to_sample)
+        }) |>
+        dplyr::select(dataset, feature)
       
-      sampled_summary <- gene_study_counts |>
-        dplyr::semi_join(sampled_genes, by = c("dataset", "gene")) |>
-        dplyr::count(dataset, gene, name = "n_studies") |>
-        dplyr::count(gene, n_studies, name = "n_datasets")
+      sampled_summary <- full_universe |>
+        dplyr::semi_join(sampled_features, by = c("dataset", "feature")) |>
+        dplyr::count(dataset, feature, name = "n_studies") |>
+        dplyr::count(feature, n_studies, name = "n_datasets")
       
-      sampled_summary |>
-        dplyr::count(
-          min_studies = n_studies,
-          min_datasets = n_datasets,
-          name = "n_genes"
-        ) |>
-        dplyr::right_join(test_thresholds, by = c("min_studies", "min_datasets")) |>
+      test_thresholds |>
         dplyr::mutate(
-          n_genes = tidyr::replace_na(n_genes, 0L),
+          n_genes = purrr::map2_int(
+            min_studies,
+            min_datasets,
+            ~ sampled_summary |>
+              dplyr::filter(
+                n_studies == .x,
+                n_datasets == .y
+              ) |>
+              nrow()
+          ),
           repeat_id = repeat_id,
           signal_type = signal_type
         )
     })
-    
-    list(
-      x = x,
-      repeat_results = sampled_results
-    )
   }
   
-  expression_result <- run_signal(expression_padj_col, "expression")
-  splicing_result   <- run_signal(splicing_padj_col, "splicing")
-  
   repeat_results <- dplyr::bind_rows(
-    expression_result$repeat_results,
-    splicing_result$repeat_results
+    run_signal(expression_padj_col, "expression"),
+    run_signal(splicing_padj_col, "splicing")
   )
   
   threshold_results_median <- repeat_results |>
@@ -1787,29 +1796,19 @@ sampled_cutoff <- function(
     )
   ) +
     ggplot2::geom_tile(color = "white") +
-    ggplot2::geom_text(
-      ggplot2::aes(label = median_n_genes),
-      color = "white",
-      size = 3
-    ) +
+    ggplot2::geom_text(ggplot2::aes(label = median_n_genes), color = "white", size = 3) +
     ggplot2::facet_wrap(~ signal_type) +
-    ggplot2::scale_x_continuous(
-      breaks = sort(unique(threshold_results_median$min_studies))
-    ) +
-    ggplot2::scale_y_continuous(
-      breaks = sort(unique(threshold_results_median$min_datasets))
-    ) +
+    ggplot2::scale_x_continuous(breaks = sort(unique(threshold_results_median$min_studies))) +
+    ggplot2::scale_y_continuous(breaks = sort(unique(threshold_results_median$min_datasets))) +
     ggplot2::scale_fill_viridis_c() +
     ggplot2::theme_minimal() +
     ggplot2::labs(
       x = "Minimum studies",
       y = "Minimum diseases",
-      fill = "Median genes retained"
+      fill = "Median random features retained"
     )
   
   list(
-    x_expression = expression_result$x,
-    x_splicing = splicing_result$x,
     repeat_results = repeat_results,
     threshold_results_median = threshold_results_median,
     plot = plot
@@ -1817,34 +1816,71 @@ sampled_cutoff <- function(
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+enrich_cutoff <- function(
+    observed_results,
+    sampled_summary
+) {
+  
+  observed_long <- observed_results |>
+    dplyr::select(
+      min_studies,
+      min_datasets,
+      n_expression_genes,
+      n_splicing_genes,
+      n_overlap_genes
+    ) |>
+    tidyr::pivot_longer(
+      cols = c(
+        n_expression_genes,
+        n_splicing_genes,
+        n_overlap_genes
+      ),
+      names_to = "signal_type",
+      values_to = "observed"
+    ) |>
+    dplyr::mutate(
+      signal_type = dplyr::recode(
+        signal_type,
+        n_expression_genes = "expression",
+        n_splicing_genes = "splicing",
+        n_overlap_genes = "overlap"
+      )
+    )
+  
+  enrichment_results <- sampled_summary |>
+    dplyr::rename(
+      expected_mean = mean_n_genes,
+      expected_median = median_n_genes,
+      expected_sd = sd_n_genes
+    ) |>
+    dplyr::left_join(
+      observed_long,
+      by = c(
+        "signal_type",
+        "min_studies",
+        "min_datasets"
+      )
+    ) |>
+    dplyr::mutate(
+      
+      enrichment =
+        observed / expected_mean,
+      
+      log2_enrichment =
+        log2((observed + 1) / (expected_mean + 1)),
+      
+      z_score =
+        dplyr::if_else(
+          expected_sd > 0,
+          (observed - expected_mean) / expected_sd,
+          NA_real_
+        ),
+      
+      empirical_p =
+        NA_real_
+    )
+  
+  enrichment_results
+}
 
 
