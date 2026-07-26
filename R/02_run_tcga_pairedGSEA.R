@@ -3,8 +3,8 @@ source("R/00_functions.R")
 
 # Run functions
 run_all_tcga(
-  tcga_dir = "data/curated_tcga_immune//",
-  out_dir = "data/paired_diff_tcga_immune"
+  tcga_dir = "data/curated_tcga_immune/",
+  out_dir = "data/pairedV2_diff_tcga/"
   )
 
 

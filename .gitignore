@@ -10,3 +10,6 @@ R/pairedGSEA
 plots
 plots_genesets
 pairedGSEA.tar.gz
+Troubleshooting/
+bash/logs_old_pairedGSEA/
+bash/results_old_pairedGSEA/
