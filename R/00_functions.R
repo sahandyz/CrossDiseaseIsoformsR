@@ -72,7 +72,8 @@ data_mine_disease <- function(
   # write out the metadata that matches as excel file for manual curation
   writexl::write_xlsx(x = all_matching_metadata, 
                       path = paste0("data/metadata_archs4/", 
-                                    disease_name, "_metadata_filtered.xlsx"))
+                                    disease_name, 
+                                    "_metadata_filtered.xlsx"))
   
 }
 
@@ -434,13 +435,15 @@ disease_isoform_fractions <- function(dfs) {
     
     # Genes
     x <- df |>
-      dplyr::select(.id, gene, padj_expression) |>
+      dplyr::select(.id, gene, 
+                    padj_expression) |>
       dplyr::filter(padj_expression < 0.05) |>
       dplyr::distinct(.id, gene)
     
     # Isoforms
     y <- df |>
-      dplyr::select(.id, gene, padj_splicing) |>
+      dplyr::select(.id, gene, 
+                    padj_splicing) |>
       dplyr::filter(padj_splicing < 0.05) |>
       dplyr::distinct(.id, gene)
     
@@ -454,15 +457,20 @@ disease_isoform_fractions <- function(dfs) {
     
     # genes + isoforms
     union_n <- dplyr::bind_rows(
-      x |> dplyr::select(.id, gene),
-      y |> dplyr::select(.id, gene)
+      x |> dplyr::select(.id, 
+                         gene),
+      y |> dplyr::select(.id, 
+                         gene)
     ) |>
-      dplyr::distinct(.id, gene) |>
-      dplyr::count(.id, name = "n_union")
+      dplyr::distinct(.id, 
+                      gene) |>
+      dplyr::count(.id, 
+                   name = "n_union")
     
     # Isoform fraction
     fractions <- union_n |>
-      dplyr::left_join(y_n, by = ".id") |>
+      dplyr::left_join(y_n,
+                       by = ".id") |>
       dplyr::mutate(
         n_splicing = tidyr::replace_na(n_splicing, 0),
         isoform_fraction = n_splicing / n_union
@@ -471,10 +479,14 @@ disease_isoform_fractions <- function(dfs) {
     # Collecting all of the above in a dataframe
     data.frame(
       Disease = names(dfs)[i],
-      Genes = median(x_n$n_expression, na.rm = TRUE),
-      Isoforms = median(y_n$n_splicing, na.rm = TRUE),
-      Genes_union_isoforms = median(union_n$n_union, na.rm = TRUE),
-      Isoform_fraction = median(fractions$isoform_fraction, na.rm = TRUE)
+      Genes = median(x_n$n_expression, 
+                     na.rm = TRUE),
+      Isoforms = median(y_n$n_splicing, 
+                        na.rm = TRUE),
+      Genes_union_isoforms = median(union_n$n_union, 
+                                    na.rm = TRUE),
+      Isoform_fraction = median(fractions$isoform_fraction, 
+                                na.rm = TRUE)
     )
   }))
   
@@ -559,7 +571,8 @@ run_all_archs4 <- function(
     
     # Skip if output already exists
     if (file.exists(out_file)) {
-      message("Skipping (already exists): ", basename(out_file))
+      message("Skipping (already exists): ", 
+              basename(out_file))
       next
     }
     
@@ -603,11 +616,14 @@ combine_paired_diff_lists <- function(input_dir,
     combined_list <- c(combined_list, x)
   }
   
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(output_dir, 
+             recursive = TRUE, 
+             showWarnings = FALSE)
   
   saveRDS(
     combined_list,
-    file.path(output_dir, output_file)
+    file.path(output_dir, 
+              output_file)
   )
   
   invisible(combined_list)
@@ -949,10 +965,14 @@ medians_for_plot <- function(all_results,
   all_results |>
     dplyr::group_by(.data[[group_col]]) |>
     dplyr::summarise(
-      Isoforms = median(Isoforms, na.rm = TRUE),
-      Genes = median(Genes, na.rm = TRUE),
-      Overlap = median(Overlap, na.rm = TRUE),
-      Only_Isoforms = median(Only_Isoforms, na.rm = TRUE),
+      Isoforms = median(Isoforms, 
+                        na.rm = TRUE),
+      Genes = median(Genes, 
+                     na.rm = TRUE),
+      Overlap = median(Overlap, 
+                       na.rm = TRUE),
+      Only_Isoforms = median(Only_Isoforms, 
+                             na.rm = TRUE),
       .groups = "drop"
     )
 }
@@ -982,14 +1002,17 @@ plot_summary_feature_boxplots <- function(
     single_id = single_id
   )
   
+  # Computing medians for boxplot
   boxplot_df <- medians_for_plot(all_results, 
                                  group_col = "disease")
   
+  # Pulling each disease
   disease_levels <- all_results |>
     dplyr::distinct(disease) |>
     dplyr::arrange(disease) |>
     dplyr::pull(disease)
   
+  # Choosing a color for each disease
   disease_colors <- viridisLite::viridis(
     n = length(disease_levels),
     option = "D"
@@ -1014,6 +1037,7 @@ plot_summary_feature_boxplots <- function(
       value = value + 1
     )
   
+  # function ensures one boxplot for each feature_name
   make_one_plot <- function(feature_name) {
     y_label <- dplyr::case_when(
       feature_name == "Isoforms" ~ "Significant Isoforms / Comparison",
@@ -1023,11 +1047,13 @@ plot_summary_feature_boxplots <- function(
       TRUE ~ feature_name
     )
     
+    # labels connected to feature and disease for boxplot
     median_labels <- boxplot_long |>
       dplyr::filter(feature_type == feature_name) |>
       dplyr::group_by(disease) |>
       dplyr::summarise(
-        median_value = median(value - 1, na.rm = TRUE),
+        median_value = median(value - 1, 
+                              na.rm = TRUE),
         .groups = "drop"
       ) |>
       dplyr::mutate(
@@ -1038,11 +1064,14 @@ plot_summary_feature_boxplots <- function(
         )
       )
     
+    # Setting the names for boxplot
     disease_axis_labels <- stats::setNames(
       median_labels$disease_label,
       median_labels$disease
     )
     
+    # Creating the long formatted df and then using it for the plots
+    # Ordering the boxplot from lowest median (left) to highest median (right) for each boxplot
     p <- boxplot_long |>
       dplyr::filter(feature_type == feature_name) |>
       dplyr::mutate(
@@ -1109,9 +1138,11 @@ plot_summary_feature_boxplots <- function(
       ggplot2::theme(
         legend.position = "none",
         text = ggplot2::element_text(size = 14),
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+        axis.text.x = ggplot2::element_text(angle = 45, 
+                                            hjust = 1)
       )
     
+    # Saving the boxplots to folder
     ggplot2::ggsave(
       filename = file.path(output_dir, 
                            paste0("boxplot_", 
@@ -1161,439 +1192,7 @@ plot_summary_feature_boxplots <- function(
   ))
 }
 
-
-# ---- summarize one geneset dataframe .rds file ----
-summarise_one_geneset_file <- function(path_to_file) {
-  disease <- extract_disease(path_to_file)
-  
-  data_file <- readr::read_rds(path_to_file) |>
-    tibble::as_tibble()
-  
-  significant_genes <- data_file |>
-    dplyr::filter(padj_expression < 0.05)
-  
-  significant_isoforms <- data_file |>
-    dplyr::filter(padj_splicing < 0.05)
-  
-  diff_genes <- significant_genes |>
-    dplyr::group_by(.id) |>
-    dplyr::count(.id, name = "Genesets")
-  
-  diff_isoforms <- significant_isoforms |>
-    dplyr::group_by(.id) |>
-    dplyr::count(.id, name = "Isoforms")
-  
-  diff_overlap <- dplyr::inner_join(
-    significant_genes |> dplyr::distinct(.id, pathway),
-    significant_isoforms |> dplyr::distinct(.id, pathway),
-    by = c(".id", "pathway")
-  ) |>
-    dplyr::group_by(.id) |>
-    dplyr::count(.id, name = "Overlap")
-  
-  overlap_paths <- dplyr::inner_join(
-    significant_genes |> dplyr::distinct(.id, pathway),
-    significant_isoforms |> dplyr::distinct(.id, pathway),
-    by = c(".id", "pathway")
-  )
-  
-  diff_only_isoforms <- dplyr::anti_join(
-    significant_isoforms |> dplyr::select(.id, pathway),
-    overlap_paths,
-    by = c(".id", "pathway")
-  ) |>
-    dplyr::group_by(.id) |>
-    dplyr::count(.id, name = "Only_Isoforms")
-  
-  list(
-    diff_isoforms,
-    diff_genes,
-    diff_overlap,
-    diff_only_isoforms
-  ) |>
-    purrr::reduce(dplyr::full_join, by = ".id") |>
-    tidyr::replace_na(list(
-      Isoforms = 0,
-      Genesets = 0,
-      Overlap = 0,
-      Only_Isoforms = 0
-    )) |>
-    dplyr::mutate(disease = disease, .before = 1)
-}
-
-
-# ---- summarize all geneset files ----
-summarise_all_geneset_files <- function(
-    input_dir,
-    pattern = "_ora_raw\\.rds$"
-) {
-  files <- list.files(input_dir, pattern = pattern, full.names = TRUE)
-  
-  purrr::map_dfr(files, summarise_one_geneset_file)
-}
-
-
-# ---- make disease-level medians ----
-medians_for_plot <- function(all_results, 
-                             group_col = "disease") {
-  all_results |>
-    dplyr::group_by(.data[[group_col]]) |>
-    dplyr::summarise(
-      Isoforms = median(Isoforms, na.rm = TRUE),
-      Genes = median(Genes, na.rm = TRUE),
-      Overlap = median(Overlap, na.rm = TRUE),
-      Only_Isoforms = median(Only_Isoforms, na.rm = TRUE),
-      .groups = "drop"
-    )
-}
-
-
-# ---- plot geneset boxplots ----
-plot_summary_geneset_boxplots <- function(
-    input_dir = "data/ora_archs4/",
-    pattern = "_ora_raw\\.rds$",
-    output_dir = "plots_genesets",
-    width = 8,
-    height = 7,
-    dpi = 300
-) {
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-  
-  all_results <- summarise_all_geneset_files(
-    input_dir = input_dir,
-    pattern = pattern
-  )
-  
-  boxplot_summary <- all_results |>
-    dplyr::group_by(disease) |>
-    dplyr::summarise(
-      Isoforms = median(Isoforms, na.rm = TRUE),
-      Genesets = median(Genesets, na.rm = TRUE),
-      Overlap = median(Overlap, na.rm = TRUE),
-      Only_Isoforms = median(Only_Isoforms, na.rm = TRUE),
-      .groups = "drop"
-    )
-  
-  boxplot_long <- all_results |>
-    tidyr::pivot_longer(
-      cols = c(Isoforms, Genesets, Overlap, Only_Isoforms),
-      names_to = "feature_type",
-      values_to = "value"
-    ) |>
-    dplyr::mutate(
-      value_raw = dplyr::if_else(is.na(value), 0, value),
-      value = value_raw + 1
-    )
-  
-  make_one_plot <- function(feature_name) {
-    y_label <- dplyr::case_when(
-      feature_name == "Isoforms" ~ "Significant Splicing Genesets / Comparison",
-      feature_name == "Genesets" ~ "Significant Expression Genesets / Comparison",
-      feature_name == "Overlap" ~ "Overlap Genesets / Comparison",
-      feature_name == "Only_Isoforms" ~ "Only Splicing Genesets / Comparison",
-      TRUE ~ feature_name
-    )
-    
-    disease_order <- boxplot_long |>
-      dplyr::filter(feature_type == feature_name) |>
-      dplyr::group_by(disease) |>
-      dplyr::summarise(
-        med = median(value_raw, na.rm = TRUE),
-        .groups = "drop"
-      ) |>
-      dplyr::arrange(med) |>
-      dplyr::pull(disease)
-    
-    plot_data <- boxplot_long |>
-      dplyr::filter(feature_type == feature_name) |>
-      dplyr::mutate(
-        disease = factor(disease, levels = disease_order)
-      )
-    
-    p <- ggplot2::ggplot(
-      plot_data,
-      ggplot2::aes(
-        x = disease,
-        y = value,
-        color = disease,
-        fill = disease
-      )
-    ) +
-      ggplot2::geom_boxplot(
-        width = 0.7,
-        color = "black",
-        alpha = 0.5,
-        outlier.shape = NA,
-        lwd = 0.5
-      ) +
-      ggbeeswarm::geom_beeswarm(
-        dodge.width = 0.90,
-        size = 2,
-        alpha = 0.5
-      ) +
-      ggplot2::scale_y_log10(
-        breaks = c(1, 11, 101, 1001, 10001),
-        labels = c(0, 10, 100, 1000, 10000)
-      ) +
-      ggplot2::labs(
-        x = "",
-        y = y_label,
-        title = paste0(
-          "Significant genesets - ",
-          stringr::str_replace_all(feature_name, "_", " ")
-        )
-      ) +
-      ggplot2::theme_classic() +
-      ggplot2::theme(
-        legend.position = "none",
-        text = ggplot2::element_text(size = 14),
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
-      )
-    
-    ggplot2::ggsave(
-      filename = file.path(output_dir, paste0("boxplot_", feature_name, ".png")),
-      plot = p,
-      width = width,
-      height = height,
-      dpi = dpi
-    )
-    
-    p
-  }
-  
-  plots <- list(
-    Isoforms = make_one_plot("Isoforms"),
-    Genesets = make_one_plot("Genesets"),
-    Overlap = make_one_plot("Overlap"),
-    Only_Isoforms = make_one_plot("Only_Isoforms")
-  )
-  
-  plots$All <- patchwork::wrap_plots(
-    plots$Isoforms,
-    plots$Genesets,
-    plots$Overlap,
-    plots$Only_Isoforms,
-    ncol = 2
-  ) +
-    patchwork::plot_layout(
-      guides = "collect",
-      axis_titles = "collect"
-    )
-  
-  ggplot2::ggsave(
-    filename = file.path(output_dir, "boxplot_All.png"),
-    plot = plots$All,
-    width = width * 2,
-    height = height * 2,
-    dpi = dpi
-  )
-  
-  list(
-    all_results = all_results,
-    boxplot_summary = boxplot_summary,
-    boxplot_long = boxplot_long,
-    plots = plots
-  )
-}
-
-
-
-make_ridge_from_ora <- function(path, 
-                                pattern = "_ora_raw\\.rds$", 
-                                recursive = TRUE,
-                                x_limits = c(-1, 1),
-                                save_plot = TRUE,
-                                plot_dir = "plots",
-                                plot_name = "ridge_plot_faceted",
-                                width = 16,
-                                height = 7,
-                                dpi = 300) {
-  
-  ora_files <- list.files(
-    path = path,
-    pattern = pattern,
-    full.names = TRUE,
-    recursive = recursive
-  )
-  
-  if (length(ora_files) == 0) {
-    stop("No files matching pattern found.")
-  }
-  
-  filter_scenarios <- tibble::tribble(
-    ~filter_type, ~filter_fun,
-    "padj_expression < 0.05",
-    \(df) dplyr::filter(df, padj_expression < 0.05),
-    
-    "padj_expression < 0.05 | padj_splicing < 0.05",
-    \(df) dplyr::filter(df, padj_expression < 0.05 | padj_splicing < 0.05),
-    
-    "padj_splicing < 0.05",
-    \(df) dplyr::filter(df, padj_splicing < 0.05)
-  )
-  
-  all_ridge_data <- purrr::map_dfr(
-    .x = stats::setNames(
-      ora_files,
-      stringr::str_remove(basename(ora_files), pattern)
-    ),
-    .f = function(file) {
-      
-      pairedOraResultsDF <- readRDS(file)
-      
-      purrr::map_dfr(
-        seq_len(nrow(filter_scenarios)),
-        function(i) {
-          
-          filtered_df <- filter_scenarios$filter_fun[[i]](pairedOraResultsDF) |>
-            dplyr::group_by(.id) |>
-            dplyr::filter(dplyr::n() > 10) |>
-            dplyr::ungroup()
-          
-          filtered_df |> 
-            dplyr::group_by(.id) |> 
-            dplyr::summarize(
-              corEnrichScores = stats::cor(
-                enrichment_score_expression,
-                enrichment_score_splicing,
-                method = "spearman",
-                use = "pairwise.complete.obs"
-              ),
-              n_sig_genesets = dplyr::n(),
-              filter_type = filter_scenarios$filter_type[[i]],
-              .groups = "drop"
-            )
-        }
-      )
-    },
-    .id = "Disease"
-  )
-  
-  disease_levels <- all_ridge_data |> 
-    dplyr::group_by(Disease) |> 
-    dplyr::summarize(
-      overall_median = stats::median(corEnrichScores, na.rm = TRUE),
-      .groups = "drop"
-    ) |> 
-    dplyr::arrange(dplyr::desc(overall_median)) |> 
-    dplyr::pull(Disease)
-  
-  all_ridge_data_plot <- all_ridge_data |> 
-    dplyr::mutate(
-      Disease = factor(Disease, levels = disease_levels),
-      filter_type = factor(
-        filter_type,
-        levels = c(
-          "padj_expression < 0.05",
-          "padj_expression < 0.05 | padj_splicing < 0.05",
-          "padj_splicing < 0.05"
-        )
-      )
-    )
-  
-  medians_df_plot <- all_ridge_data_plot |> 
-    dplyr::group_by(filter_type, Disease) |> 
-    dplyr::summarize(
-      median = stats::median(corEnrichScores, na.rm = TRUE),
-      .groups = "drop"
-    ) |> 
-    dplyr::mutate(
-      Disease_num = as.numeric(Disease),
-      median_label = paste0("median = ", round(median, 2))
-    )
-  
-  ridge_plot <- all_ridge_data_plot |> 
-    ggplot2::ggplot(ggplot2::aes(
-      x = corEnrichScores,
-      y = Disease,
-      fill = Disease,
-      color = Disease
-    )) +
-    ggridges::geom_density_ridges(
-      alpha = 0.5,
-      scale = 1.2,
-      rel_min_height = 0.01
-    ) +
-    ggplot2::geom_segment(
-      data = medians_df_plot,
-      ggplot2::aes(
-        x = median,
-        xend = median,
-        y = Disease_num,
-        yend = Disease_num + 1,
-        color = Disease
-      ),
-      inherit.aes = FALSE,
-      linetype = "dashed",
-      linewidth = 0.8
-    ) +
-    ggplot2::geom_text(
-      data = medians_df_plot,
-      ggplot2::aes(
-        x = median + 0.03,
-        y = Disease_num + 0.5,
-        label = median_label
-      ),
-      color = "black",
-      inherit.aes = FALSE,
-      hjust = 0,
-      size = 3,
-      show.legend = FALSE
-    ) +
-    ggplot2::facet_wrap(~ filter_type, nrow = 1) +
-    ggplot2::coord_cartesian(xlim = x_limits, clip = "off") +
-    ggplot2::labs(
-      x = "Spearman's rho correlation coefficient",
-      y = NULL
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      text = ggplot2::element_text(size = 20),
-      legend.position = "none",
-      strip.text = ggplot2::element_text(size = 14),
-      plot.margin = ggplot2::margin(10, 40, 10, 10)
-    )
-  
-  summary_table <- all_ridge_data |> 
-    dplyr::group_by(filter_type, Disease) |> 
-    dplyr::summarize(
-      median = stats::median(corEnrichScores, na.rm = TRUE),
-      n = sum(!is.na(corEnrichScores)),
-      .groups = "drop"
-    ) |> 
-    dplyr::arrange(filter_type, median)
-  
-  if (save_plot) {
-    if (!dir.exists(plot_dir)) {
-      dir.create(plot_dir, recursive = TRUE)
-    }
-    
-    file_path <- file.path(plot_dir, paste0(plot_name, ".png"))
-    
-    ggplot2::ggsave(
-      filename = file_path,
-      plot = ridge_plot,
-      width = width,
-      height = height,
-      dpi = dpi
-    )
-    
-    message("Plot saved to: ", file_path)
-  }
-  
-  return(list(
-    data = all_ridge_data,
-    plot_data = all_ridge_data_plot,
-    medians = medians_df_plot,
-    plot = ridge_plot,
-    summary = summary_table
-  ))
-}
-
-
-
-# ---- Preliminary meta-analyses functions ----
-
+# ---- Frequency-based Feature Summarization functions ----
 background_cutoff <- function(
     dfs = list_of_dataframes,
     padj_thresh = 0.05,
@@ -1604,10 +1203,11 @@ background_cutoff <- function(
     datasets_comparison = c(">=", "==")
 ) {
   
+  # Kind of filter used cumulative or exact
   studies_comparison  <- match.arg(studies_comparison)
   datasets_comparison <- match.arg(datasets_comparison)
   
-  
+  # For each gene, count in how many studies it is significant within each disease
   precompute_gene_counts <- function(padj_col) {
     dfs |>
       purrr::imap_dfr(~ .x |>
@@ -1615,15 +1215,19 @@ background_cutoff <- function(
                           !is.na(.data[[padj_col]]),
                           .data[[padj_col]] < padj_thresh
                         ) |>
-                        dplyr::distinct(.id, gene) |>
-                        dplyr::count(gene, name = "n_studies") |>
+                        dplyr::distinct(.id, 
+                                        gene) |>
+                        dplyr::count(gene, 
+                                     name = "n_studies") |>
                         dplyr::mutate(dataset = .y)
       ) |>
       dplyr::group_by(gene) |>
-      tidyr::nest(dataset_counts = c(dataset, n_studies)) |>
+      tidyr::nest(dataset_counts = c(dataset, 
+                                     n_studies)) |>
       dplyr::ungroup()
   }
   
+  # Find genes for the specified number studies and diseases thresholds
   genes_for_threshold <- function(
     counts,
     min_studies,
@@ -1634,6 +1238,8 @@ background_cutoff <- function(
     
     counts |>
       dplyr::mutate(
+        
+        # Counting diseases where the gene meets the study threshold
         n_datasets = purrr::map_int(
           dataset_counts,
           ~ {
@@ -1655,9 +1261,11 @@ background_cutoff <- function(
       dplyr::pull(gene)
   }
   
+  # Precompute significance counts separately for expression and splicing - To save time
   expression_counts <- precompute_gene_counts(expression_padj_col)
   splicing_counts   <- precompute_gene_counts(splicing_padj_col)
   
+  # Evaluates every combination of minimum studies and minimum diseases
   threshold_results <- tidyr::expand_grid(
     min_studies = min_studies_range,
     min_datasets = seq_along(dfs)
@@ -1683,19 +1291,28 @@ background_cutoff <- function(
           datasets_comparison
         )
       ),
-      n_expression_genes = purrr::map_int(expression_genes, length),
-      n_splicing_genes = purrr::map_int(splicing_genes, length),
+      n_expression_genes = purrr::map_int(expression_genes, 
+                                          length),
+      n_splicing_genes = purrr::map_int(splicing_genes, 
+                                        length),
+      
+      # Number of genes significant for both expression and splicing (overlap)
       n_overlap_genes = purrr::map2_int(
         expression_genes,
         splicing_genes,
-        ~ length(intersect(.x, .y))
+        ~ length(intersect(.x, 
+                           .y))
       )
     ) |>
-    dplyr::select(-expression_genes, -splicing_genes)
+    dplyr::select(-expression_genes, 
+                  -splicing_genes)
   
+  # Converts result to long-df for faceted plotting
   threshold_results_long <- threshold_results |>
     tidyr::pivot_longer(
-      cols = c(n_expression_genes, n_splicing_genes, n_overlap_genes),
+      cols = c(n_expression_genes, 
+               n_splicing_genes, 
+               n_overlap_genes),
       names_to = "signal_type",
       values_to = "n_genes"
     ) |>
@@ -1712,6 +1329,7 @@ background_cutoff <- function(
       )
     )
   
+  # Heatmap summarizing the number of genes for each threshold combination
   plot <- ggplot2::ggplot(
     threshold_results_long,
     ggplot2::aes(
@@ -1756,7 +1374,8 @@ background_cutoff <- function(
   )
 }
 
-
+# Function randomly samples the same number of significant features observed 
+# For each disease to allow for comparison with the observed cutoff results.
 sampled_cutoff <- function(
     dfs,
     padj_thresh = 0.05,
@@ -1767,13 +1386,17 @@ sampled_cutoff <- function(
     feature_col = "gene",
     min_studies_range = 1:6
 ) {
+  
+  # Setting a seed for reproducible sampling
   set.seed(seed)
   
+  # Defining all study and disease threshold combinations to evaluate
   test_thresholds <- tidyr::expand_grid(
     min_studies = min_studies_range,
     min_datasets = seq_along(dfs)
   )
   
+  # Creates the complete feature universe at the study level for each disease
   full_universe <- dfs |>
     purrr::imap_dfr(~ .x |>
                       dplyr::distinct(
@@ -1783,9 +1406,11 @@ sampled_cutoff <- function(
                       )
     )
   
+  # Keeping unique features available for sampling within each dataset
   feature_universe <- full_universe |>
     dplyr::distinct(dataset, feature)
   
+  # Determine how many significant features should be sampled from each disease
   get_x_by_dataset <- function(padj_col) {
     dfs |>
       purrr::imap_dfr(~ .x |>
@@ -1793,34 +1418,53 @@ sampled_cutoff <- function(
                           !is.na(.data[[padj_col]]),
                           .data[[padj_col]] < padj_thresh
                         ) |>
-                        dplyr::distinct(dataset = .y, feature = .data[[feature_col]])
+                        dplyr::distinct(dataset = .y, 
+                                        feature = .data[[feature_col]])
       ) |>
-      dplyr::count(dataset, name = "n_to_sample")
+      dplyr::count(dataset, 
+                   name = "n_to_sample")
   }
   
-  run_signal <- function(padj_col, signal_type) {
+  # Repeatedly sample random features while keeping the observed number of significant features the same for each disease
+  run_signal <- function(padj_col, 
+                         signal_type) {
     x_by_dataset <- get_x_by_dataset(padj_col)
     
     purrr::map_dfr(seq_len(n_repeats), function(repeat_id) {
       
+      # Sample the required number of features independently within each dataset
       sampled_features <- feature_universe |>
-        dplyr::left_join(x_by_dataset, by = "dataset") |>
-        dplyr::mutate(n_to_sample = tidyr::replace_na(n_to_sample, 0L)) |>
+        dplyr::left_join(x_by_dataset, 
+                         by = "dataset") |>
+        dplyr::mutate(n_to_sample = tidyr::replace_na(n_to_sample, 
+                                                      0L)) |>
         dplyr::group_split(dataset) |>
         purrr::map_dfr(function(df) {
           n_to_sample <- unique(df$n_to_sample)
-          n_to_sample <- min(n_to_sample, nrow(df))
+          
+          # Prevent requesting more features than are available so keeping it at min
+          n_to_sample <- min(n_to_sample, 
+                             nrow(df))
           
           df |>
             dplyr::slice_sample(n = n_to_sample)
         }) |>
-        dplyr::select(dataset, feature)
+        dplyr::select(dataset, 
+                      feature)
       
+      
+      # Counting how many studies contain each sampled feature and then how many diseases show that study count
       sampled_summary <- full_universe |>
-        dplyr::semi_join(sampled_features, by = c("dataset", "feature")) |>
-        dplyr::count(dataset, feature, name = "n_studies") |>
-        dplyr::count(feature, n_studies, name = "n_datasets")
+        dplyr::semi_join(sampled_features, 
+                         by = c("dataset", "feature")) |>
+        dplyr::count(dataset, 
+                     feature, 
+                     name = "n_studies") |>
+        dplyr::count(feature, 
+                     n_studies, 
+                     name = "n_datasets")
       
+      # Counting features matching each exact study/disease threshold
       test_thresholds |>
         dplyr::mutate(
           n_genes = purrr::map2_int(
@@ -1839,13 +1483,19 @@ sampled_cutoff <- function(
     })
   }
   
+  # Run the random runs separately for expression and splicing
   repeat_results <- dplyr::bind_rows(
-    run_signal(expression_padj_col, "expression"),
-    run_signal(splicing_padj_col, "splicing")
+    run_signal(expression_padj_col, 
+               "expression"),
+    run_signal(splicing_padj_col, 
+               "splicing")
   )
   
+  # Summarize the median values across repeated runs
   threshold_results_median <- repeat_results |>
-    dplyr::group_by(signal_type, min_studies, min_datasets) |>
+    dplyr::group_by(signal_type, 
+                    min_studies, 
+                    min_datasets) |>
     dplyr::summarise(
       median_n_genes = stats::median(n_genes),
       mean_n_genes = mean(n_genes),
@@ -1853,6 +1503,7 @@ sampled_cutoff <- function(
       .groups = "drop"
     )
   
+  # Heatmap showing the median number of randomly retained features for each threshold combination
   plot <- ggplot2::ggplot(
     threshold_results_median,
     ggplot2::aes(
@@ -1886,11 +1537,14 @@ sampled_cutoff <- function(
 }
 
 
+# Compare observed feature retention with the random-sampling 
+# to find best enrichment scores across study and disease cutoff combinations.
 enrich_cutoff <- function(
     observed_results,
     sampled_summary
 ) {
   
+  # Reshape the observed expression, splicing, and overlap counts into a long-df
   observed_long <- observed_results |>
     dplyr::select(
       min_studies,
@@ -1908,6 +1562,8 @@ enrich_cutoff <- function(
       names_to = "signal_type",
       values_to = "observed"
     ) |>
+    
+    # Match the signal labels used in the sampled results
     dplyr::mutate(
       signal_type = dplyr::recode(
         signal_type,
@@ -1917,6 +1573,8 @@ enrich_cutoff <- function(
       )
     )
   
+  # Join observed counts to the corresponding random expectation
+  # for each signal type and cutoff combination
   enrichment_results <- sampled_summary |>
     dplyr::rename(
       expected_mean = mean_n_genes,
@@ -1933,26 +1591,20 @@ enrich_cutoff <- function(
     ) |>
     dplyr::mutate(
       
+      # Enrichment computation
       enrichment =
         observed / expected_median,
       
+      # Log2 Enrichment computation
       log2_enrichment =
-        log2((observed) / (expected_median)),
-      
-      z_score =
-        dplyr::if_else(
-          expected_sd > 0,
-          (observed - expected_median) / expected_sd,
-          NA_real_
-        ),
-      
-      empirical_p =
-        NA_real_
+        log2((observed) / (expected_median))
     )
   
   enrichment_results
 }
 
+# Extracting features that are significant in the required number of studies
+# and diseases, optional saving (if wanted) the resulting feature list to an RDS file.
 extract_background_genes <- function(
     dfs,
     padj_col,
@@ -1964,6 +1616,7 @@ extract_background_genes <- function(
     new_filename = NULL
 ) {
   
+  # Count how many distinct studies contain each significant feature within each disease
   feature_counts <- dfs |>
     purrr::imap_dfr(~ .x |>
                       dplyr::filter(
@@ -1976,13 +1629,17 @@ extract_background_genes <- function(
                         feature = .data[[feature_col]]
                       )
     ) |>
-    dplyr::count(dataset, feature, name = "n_studies")
+    dplyr::count(dataset, 
+                 feature, 
+                 name = "n_studies")
   
+  # Using either cumulative thresholds (>=) or exact thresholds (==)
   result <- if (cumulative) {
     
     feature_counts |>
       dplyr::filter(n_studies >= min_studies) |>
-      dplyr::count(feature, name = "n_datasets") |>
+      dplyr::count(feature, 
+                   name = "n_datasets") |>
       dplyr::filter(n_datasets >= min_datasets) |>
       dplyr::pull(feature)
     
@@ -1990,18 +1647,23 @@ extract_background_genes <- function(
     
     feature_counts |>
       dplyr::filter(n_studies == min_studies) |>
-      dplyr::count(feature, name = "n_datasets") |>
+      dplyr::count(feature, 
+                   name = "n_datasets") |>
       dplyr::filter(n_datasets == min_datasets) |>
       dplyr::pull(feature)
   }
   
+  # Optional to save the selected feature list for later use
   if (!is.null(new_filename)) {
-    saveRDS(result, file = new_filename)
+    saveRDS(result, 
+            file = new_filename)
   }
   
   result
 }
 
+# Summarize the disease-level study-count pattern for features that pass the requested study and disease thresholds.
+# To obtain a list of how many diseases the features are found in
 get_disease_patterns <- function(
     dfs,
     padj_col,
@@ -2012,6 +1674,7 @@ get_disease_patterns <- function(
     cumulative = TRUE
 ) {
   
+  # Count how many distinct studies contain each significant feature within each disease
   feature_counts <- dfs |>
     purrr::imap_dfr(~ .x |>
                       dplyr::filter(
@@ -2024,30 +1687,52 @@ get_disease_patterns <- function(
                         feature = .data[[feature_col]]
                       )
     ) |>
-    dplyr::count(dataset, feature, name = "n_studies")
+    dplyr::count(dataset, 
+                 feature, 
+                 name = "n_studies")
   
+  # Using minimum thresholds when cumulative = TRUE
   if (cumulative) {
     feature_counts |>
       dplyr::group_by(feature) |>
+      
+      # Keeps features that meet the study threshold in at least the requested number of diseases
       dplyr::filter(sum(n_studies >= min_studies) >= min_datasets) |>
-      dplyr::arrange(dataset, .by_group = TRUE) |>
+      dplyr::arrange(dataset, 
+                     .by_group = TRUE) |>
+      
+      # Collapses each feature's disease specific counts into one summary row
       dplyr::summarise(
-        diseases = paste(dataset, collapse = " | "),
-        study_counts = paste(n_studies, collapse = " | "),
-        combo = paste0(dataset, ":", n_studies, collapse = " | "),
+        diseases = paste(dataset, 
+                         collapse = " | "),
+        study_counts = paste(n_studies, 
+                             collapse = " | "),
+        combo = paste0(dataset, ":", 
+                       n_studies, 
+                       collapse = " | "),
         n_datasets_passing = sum(n_studies >= min_studies),
         .groups = "drop"
       ) |>
+      
+      # Restore the used feature column name
       dplyr::rename(!!feature_col := feature)
+    
   } else {
+    
+    # Finding exact study and disease counts when cumulative = FALSE
     feature_counts |>
       dplyr::group_by(feature) |>
       dplyr::filter(sum(n_studies == min_studies) == min_datasets) |>
-      dplyr::arrange(dataset, .by_group = TRUE) |>
+      dplyr::arrange(dataset, 
+                     .by_group = TRUE) |>
       dplyr::summarise(
-        diseases = paste(dataset, collapse = " | "),
-        study_counts = paste(n_studies, collapse = " | "),
-        combo = paste0(dataset, ":", n_studies, collapse = " | "),
+        diseases = paste(dataset, 
+                         collapse = " | "),
+        study_counts = paste(n_studies, 
+                             collapse = " | "),
+        combo = paste0(dataset, ":", 
+                       n_studies, 
+                       collapse = " | "),
         n_datasets_passing = sum(n_studies == min_studies),
         .groups = "drop"
       ) |>
@@ -2055,25 +1740,34 @@ get_disease_patterns <- function(
   }
 }
 
-# Run fgsea::fora
+# Run ORA on the features keept at the chosen cutoffs, using all tested features as the background universe.
 run_fgsea_on_cutoff <- function(dfs = dfs,
                                 path_to_feature_cutoff) {
   
+  # Loading the pathways, and features retained by the cutoff
   pathways <- readr::read_rds("data/genesets/genesets.rds")
   features <- readr::read_rds(path_to_feature_cutoff)
+  
+  # Using background universe as genes with at least one non missing adjusted p-value across the input disease datasets
   universe_features <- dplyr::bind_rows(dfs) |>
-    dplyr::filter(if_any(starts_with("padj"), ~ !is.na(.))) |>
-    dplyr::distinct(gene, .keep_all = TRUE) |>
+    dplyr::filter(if_any(starts_with("padj"), 
+                         ~ !is.na(.))) |>
+    dplyr::distinct(gene, 
+                    .keep_all = TRUE) |>
     dplyr::pull(gene)
   
+  # Testing if kept features are over-represented in each pathway relative to the background universe
   fgsea::fora(pathways,
               genes = features,
               universe = universe_features,
               minSize = 25) |> 
+    
+    # Keeping significant hits
     dplyr::filter(padj < 0.05)
 }
 
-# Prep function for geneSetSimplifyR
+# Combine significant gene- and isoform-level pathway enrichment results,
+# calculate enrichment scores, and prepare inputs for geneSetSimplifyR.
 combine_fgsea_gene_isoform <- function(gene_res = fgsea_cumu_d9_s6_genes,
                                        isoform_res = fgsea_cumu_d9_s6_isoforms,
                                        sigGenes_genes = readr::read_rds("data/cut_off_cumulative/genes_diseases9_studies6.rds"),
@@ -2084,17 +1778,20 @@ combine_fgsea_gene_isoform <- function(gene_res = fgsea_cumu_d9_s6_genes,
                                        padj_cutoff = 0.05,
                                        pseudocount = 0.06) {
   
+  # Load the gene-level ARCHS4 feature universe
   universe_genes <- rhdf5::h5read(
     file = archs4_file,
     name = "meta/transcripts/ensembl_gene"
   ) |>
     unique()
   
+  # Load the transcript-level ARCHS4 feature universe
   universe_transcripts <- rhdf5::h5read(
     file = archs4_file,
     name = "meta/transcripts/ensembl_id"
   )
   
+  # Filter significant pathways and calculate an enrichment score
   compute_enrichment <- function(res,
                                  sigFeatures,
                                  universe_features,
@@ -2109,12 +1806,15 @@ combine_fgsea_gene_isoform <- function(gene_res = fgsea_cumu_d9_s6_genes,
       dplyr::mutate(
         feature_type = feature_type,
         source = source,
+        
+        # Comparing the pathway overlap proportion with the overall proportion of significant features
         enrichment_score = log2(
           ((overlap / size) / (n_sig / n_universe)) + pseudocount
         )
       )
   }
   
+  # Process gene-expression and isoform-splicing results separately, and combining them
   combined_df <- dplyr::bind_rows(
     compute_enrichment(
       res = gene_res,
@@ -2132,25 +1832,35 @@ combine_fgsea_gene_isoform <- function(gene_res = fgsea_cumu_d9_s6_genes,
     )
   )
   
+  # Creating a named list mapping each pathway to its unique overlapping
+  # genes or transcripts, as needed for geneSetSimplifyR
   combined_lists <- combined_df |>
     dplyr::filter(!is.na(pathway)) |>
     dplyr::select(pathway, overlapGenes) |>
     dplyr::mutate(
-      overlapGenes = purrr::map(overlapGenes, \(x) unique(as.character(x)))
+      overlapGenes = purrr::map(overlapGenes, 
+                                \(x) unique(as.character(x)))
     ) |>
     tibble::deframe()
   
-  saveRDS(combined_lists, file = save_list_path)
+  # Saving the pathway-to-feature list
+  saveRDS(combined_lists, 
+          file = save_list_path)
   
+  # Create and save the enrichment table used for pathway annotation
   exampleEnrichment <- combined_df |>
-    dplyr::select(source, pathway, enrichment_score)
+    dplyr::select(source, 
+                  pathway, 
+                  enrichment_score)
   
-  saveRDS(exampleEnrichment, file = save_enrichment_path)
+  saveRDS(exampleEnrichment, 
+          file = save_enrichment_path)
   
   return(combined_df)
 }
 
-
+# Creating expression volcano plot per disease by summarizing each gene's
+# log2FC and p-value across rows, showing regulation, and labeling the strongest significant genes.
 plot_volcano_expression <- function(
     df_list,
     gene_col = "gene",
@@ -2161,17 +1871,25 @@ plot_volcano_expression <- function(
     label_top_n = 10
 ) {
   
+  # Build a separate volcano plot for each data frame (disease) in the input list
   volcano_plots <- purrr::imap(df_list, function(df, name) {
     
+    # Computing metrics for repeated rows to one summary value per gene
     df_plot <- df |>
       dplyr::group_by(.data[[gene_col]]) |>
       dplyr::summarise(
-        lfc_expression = stats::median(.data[[lfc_col]], na.rm = TRUE),
-        pvalue_expression = stats::median(.data[[pval_col]], na.rm = TRUE),
+        lfc_expression = stats::median(.data[[lfc_col]], 
+                                       na.rm = TRUE),
+        pvalue_expression = stats::median(.data[[pval_col]], 
+                                          na.rm = TRUE),
         .groups = "drop"
       ) |>
       dplyr::mutate(
+        
+        # Transform p-values for the volcano plot y-axis
         neg_log10_pval = -log10(pvalue_expression),
+        
+        # Classifying genes using both the p-value and fold-change thresholds
         regulation = dplyr::case_when(
           pvalue_expression < pval_threshold &
             lfc_expression > lfc_threshold ~ "Up-regulated gene",
@@ -2181,8 +1899,11 @@ plot_volcano_expression <- function(
         )
       )
     
+    # Select the genes with the largest absolute fold changes
+    # from the significant up- and down-regulated genes
     top_labels <- df_plot |>
-      dplyr::filter(regulation %in% c("Up-regulated gene", "Down-regulated gene")) |>
+      dplyr::filter(regulation %in% c("Up-regulated gene", 
+                                      "Down-regulated gene")) |>
       dplyr::group_by(regulation) |>
       dplyr::slice_max(
         order_by = abs(lfc_expression),
@@ -2191,6 +1912,7 @@ plot_volcano_expression <- function(
       ) |>
       dplyr::ungroup()
     
+    # Plot statistical significance vs median log2FC
     ggplot2::ggplot(
       df_plot,
       ggplot2::aes(
@@ -2199,7 +1921,14 @@ plot_volcano_expression <- function(
         color = regulation
       )
     ) +
-      ggplot2::geom_point(alpha = 0.8, size = 2) +
+      ggplot2::geom_point(alpha = 0.8, 
+                          size = 2) +
+      
+      # Using a fixed x-axis range across datasets for easier comparison
+      ggplot2::scale_x_continuous(limits = c(-10, 
+                                             10)) +
+      
+      # Label the strongest significant genes while reducing text overlap
       ggrepel::geom_text_repel(
         data = top_labels,
         ggplot2::aes(label = .data[[gene_col]]),
@@ -2207,11 +1936,16 @@ plot_volcano_expression <- function(
         max.overlaps = Inf,
         show.legend = FALSE
       ) +
+      
+      # Fold-change significance cutoffs
       ggplot2::geom_vline(
-        xintercept = c(-lfc_threshold, lfc_threshold),
+        xintercept = c(-lfc_threshold, 
+                       lfc_threshold),
         linetype = "dashed",
         color = "black"
       ) +
+      
+      # p-value significance cutoff
       ggplot2::geom_hline(
         yintercept = -log10(pval_threshold),
         linetype = "dashed",
@@ -2223,9 +1957,10 @@ plot_volcano_expression <- function(
         "Not significant" = "gray"
       )) +
       ggplot2::labs(
-        title = paste("Expression Volcano Plot:", name),
-        x = "lfc_expression",
-        y = "-log10 pvalue_expression",
+        title = paste("Expression Volcano Plot:", 
+                      name),
+        x = expression(log[2] * FC),
+        y = expression(-log[10] ~ "p-value"),
         color = "Expression regulation"
       ) +
       ggplot2::theme_minimal() +
@@ -2238,6 +1973,8 @@ plot_volcano_expression <- function(
   return(volcano_plots)
 }
 
+# Create one splicing significance plot per disease by summarizing each gene's median max abs splicing difference and p-value, 
+# classifying significant changes, and showing the most statistically significant genes.
 plot_splicing_scatter <- function(
     df_list,
     gene_col = "gene",
@@ -2248,17 +1985,25 @@ plot_splicing_scatter <- function(
     n_labels = 20
 ) {
   
+  # Build a separate scatter plot for each disease in the input list
   scatter_plots <- purrr::imap(df_list, function(df, name) {
     
+    # Computing metrics for repeated rows to one summary value per gene
     df_plot <- df |>
       dplyr::group_by(.data[[gene_col]]) |>
       dplyr::summarise(
-        dif = stats::median(.data[[dif_col]], na.rm = TRUE),
-        pval = stats::median(.data[[pval_col]], na.rm = TRUE),
+        dif = stats::median(.data[[dif_col]], 
+                            na.rm = TRUE),
+        pval = stats::median(.data[[pval_col]],
+                             na.rm = TRUE),
         .groups = "drop"
       ) |>
       dplyr::mutate(
+        
+        # Transform p-values for plotting on the y-axis
         neg_log10_pval = -log10(pval),
+        
+        # Filtering genes that pass both the p-value and splicing-difference thresholds
         regulation = dplyr::case_when(
           pval < pval_threshold &
             dif > dif_threshold ~ "Significant splicing change",
@@ -2266,6 +2011,7 @@ plot_splicing_scatter <- function(
         )
       )
     
+    # Select the most statistically significant genes for labeling
     labels_df <- df_plot |>
       dplyr::filter(regulation != "Not significant") |>
       dplyr::slice_min(
@@ -2274,6 +2020,7 @@ plot_splicing_scatter <- function(
         with_ties = FALSE
       )
     
+    # Plotting statistical significance vs. splicing difference
     ggplot2::ggplot(
       df_plot,
       ggplot2::aes(
@@ -2283,6 +2030,8 @@ plot_splicing_scatter <- function(
       )
     ) +
       ggplot2::geom_point(alpha = 0.8, size = 2) +
+      
+      # Label the most significant genes while reducing text overlap
       ggrepel::geom_text_repel(
         data = labels_df,
         ggplot2::aes(label = .data[[gene_col]]),
@@ -2292,11 +2041,15 @@ plot_splicing_scatter <- function(
         point.padding = 0.3,
         show.legend = FALSE
       ) +
+      
+      # Marking the minimum splicing-difference threshold
       ggplot2::geom_vline(
         xintercept = dif_threshold,
         linetype = "dashed",
         color = "black"
       ) +
+      
+      # Marking the p-value significance threshold
       ggplot2::geom_hline(
         yintercept = -log10(pval_threshold),
         linetype = "dashed",
@@ -2307,9 +2060,10 @@ plot_splicing_scatter <- function(
         "Not significant" = "gray"
       )) +
       ggplot2::labs(
-        title = paste("Splicing Scatter Plot:", name),
-        x = dif_col,
-        y = paste0("-log10(", pval_col, ")"),
+        title = paste("Splicing Scatter Plot:", 
+                      name),
+        x = "median (max abs dif splicing)",
+        y = expression(-log[10] ~ "p-value"),
         color = "Splicing significance"
       ) +
       ggplot2::theme_minimal() +
@@ -2321,68 +2075,96 @@ plot_splicing_scatter <- function(
   
   return(scatter_plots)
 }
+
 # ---- Formal p-value integration functions ----
 
-meta_pvalues_by_gene <- function(disease_dfs, min_p = 2e-16) {
+# Performing gene-level meta-analysis within each disease by combining expression and splicing p-values across studies, 
+# while summarizing effect sizes, sample counts, uncertainty, and multiple-testing-adjusted significance.
+meta_pvalues_by_gene <- function(disease_dfs, 
+                                 min_p = 2e-16) {
   
+  # Replacing exact zero p-values with a small positive value
   fix_p <- function(p) {
     p[p == 0] <- min_p
     p
   }
   
+  # Combine available p-values using Fisher's sum-of-logs method
   combine_sumlog <- function(p) {
     p <- p |>
       stats::na.omit() |>
       as.numeric() |>
       fix_p()
     
+    # Returning missing when no studies are available,
+    # or the original p-value when only one study is present
     if (length(p) == 0) return(NA_real_)
     if (length(p) == 1) return(p)
     
     metap::sumlog(p)$p
   }
   
+  # Computing the standard error of the mean Log2FC
   compute_se <- function(x) {
     x <- x[!is.na(x)]
     if (length(x) < 2) return(NA_real_)
     stats::sd(x) / sqrt(length(x))
   }
   
+  # Process each disease independently
   disease_dfs |>
     purrr::map(\(df) {
       df |>
         dplyr::mutate(
+          
+          # Guard against zero p-values before meta-analysis by fixing p
           dplyr::across(
-            c(pvalue_expression, pvalue_splicing),
+            c(pvalue_expression, 
+              pvalue_splicing),
             fix_p
           )
         ) |>
+        
+        # Produce one meta-analysis summary row per gene
         dplyr::summarise(
           expression_meta_p = combine_sumlog(pvalue_expression),
           splicing_meta_p   = combine_sumlog(pvalue_splicing),
           
+          # Number of studies for each expression and splicing
           n_expression = sum(!is.na(pvalue_expression)),
           n_splicing   = sum(!is.na(pvalue_splicing)),
           
-          median_lfc_expression = median(lfc_expression, na.rm = TRUE),
-          median_lfc_splicing   = median(lfc_splicing, na.rm = TRUE),
+          # Median expression and splicing effect sizes across studies
+          median_lfc_expression = median(lfc_expression, 
+                                         na.rm = TRUE),
+          median_lfc_splicing   = median(lfc_splicing, 
+                                         na.rm = TRUE),
           
+          # Median max abs of the largest splicing difference
           median_max_abs_dif_splicing =
-            median(max_abs_dif_splicing, na.rm = TRUE),
+            median(max_abs_dif_splicing, 
+                   na.rm = TRUE),
           
+          # Standard errors describing variation in log2FC across the contributing studies
           se_weighted_expression = compute_se(lfc_expression),
           se_weighted_splicing   = compute_se(lfc_splicing),
           
           .by = gene
         ) |>
+        
+        # Correcting the gene-level meta-analysis p-values separately for expression and splicing
+        # with method = "BH"
         dplyr::mutate(
-          expression_meta_fdr = stats::p.adjust(expression_meta_p, method = "BH"),
-          splicing_meta_fdr   = stats::p.adjust(splicing_meta_p, method = "BH")
+          expression_meta_fdr = stats::p.adjust(expression_meta_p, 
+                                                method = "BH"),
+          splicing_meta_fdr   = stats::p.adjust(splicing_meta_p, 
+                                                method = "BH")
         )
     })
 }
 
-
+# Create one volcano plot per disease from gene-level meta-analysis results,
+# using a summarized log2FC metric and meta-analysis p-values. (any p-value can be used, just specify the column)
 plot_volcano_meta <- function(
     df_list,
     gene_col = "gene",
@@ -2393,11 +2175,23 @@ plot_volcano_meta <- function(
     min_p = 2e-16
 ) {
   
+  # Build a separate volcano plot for each disease in the input list
   volcano_plots <- purrr::imap(df_list, function(df, name) {
     
+    # Preparing plotting values and classify genes by significance and log2FC direction
     df_plot <- df |>
+      dplyr::filter(!is.na(.data[[padj_col]])) |>
       dplyr::mutate(
-        neg_log10_padj = -log10(pmax(.data[[padj_col]], min_p)),
+        
+        # Replace exact zero p-values so -log10 remains finite
+        padj_plot = dplyr::if_else(
+          .data[[padj_col]] == 0,
+          min_p,
+          .data[[padj_col]]
+        ),
+        neg_log10_padj = -log10(padj_plot),
+        
+        # Requiring both significance and a minimum log2FC for regulation
         regulation = dplyr::case_when(
           .data[[padj_col]] < padj_threshold &
             .data[[x_metric]] > log2fc_threshold ~ "Up-regulated",
@@ -2409,16 +2203,22 @@ plot_volcano_meta <- function(
         )
       )
     
+    # Label the most statistically significant genes separately within up- and down-regulated results
     labels_df <- dplyr::bind_rows(
       df_plot |>
         dplyr::filter(regulation == "Up-regulated") |>
-        dplyr::slice_min(order_by = .data[[padj_col]], n = 20, with_ties = FALSE),
+        dplyr::slice_min(order_by = .data[[padj_col]], 
+                         n = 20, 
+                         with_ties = FALSE),
       
       df_plot |>
         dplyr::filter(regulation == "Down-regulated") |>
-        dplyr::slice_min(order_by = .data[[padj_col]], n = 20, with_ties = FALSE)
+        dplyr::slice_min(order_by = .data[[padj_col]], 
+                         n = 20, 
+                         with_ties = FALSE)
     )
     
+    # Plot the summarized significance against log2FC
     ggplot2::ggplot(
       df_plot,
       ggplot2::aes(
@@ -2427,7 +2227,14 @@ plot_volcano_meta <- function(
         color = regulation
       )
     ) +
-      ggplot2::geom_point(alpha = 0.8, size = 2) +
+      ggplot2::geom_point(alpha = 0.8, 
+                          size = 2) +
+      
+      # Use a fixed log2FC range across diseases
+      ggplot2::scale_x_continuous(limits = c(-10, 
+                                             10)) +
+      
+      # Label the most significant meta-analysis results
       ggrepel::geom_text_repel(
         data = labels_df,
         ggplot2::aes(label = .data[[gene_col]]),
@@ -2437,11 +2244,15 @@ plot_volcano_meta <- function(
         point.padding = 0.2,
         show.legend = FALSE
       ) +
+      
+      # Marking the positive and negative log2FC thresholds
       ggplot2::geom_vline(
         xintercept = c(-log2fc_threshold, log2fc_threshold),
         linetype = "dashed",
         color = "black"
       ) +
+      
+      # Marking the adjusted p-value threshold
       ggplot2::geom_hline(
         yintercept = -log10(padj_threshold),
         linetype = "dashed",
@@ -2453,9 +2264,10 @@ plot_volcano_meta <- function(
         "Not significant" = "gray"
       )) +
       ggplot2::labs(
-        title = paste("Volcano Plot:", name),
-        x = x_metric,
-        y = "-log10 adjusted p-value",
+        title = paste("Volcano Plot:", 
+                      name),
+        x = expression("median(" ~ log[2] * FC ~ ")"),
+        y = expression(-log[10] ~ "p-value"),
         color = "Regulation"
       ) +
       ggplot2::theme_minimal() +
@@ -2468,14 +2280,20 @@ plot_volcano_meta <- function(
   return(volcano_plots)
 }
 
-meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
+# Combine gene-level meta-analysis results across diseases by aggregating expression and 
+# splicing p-values and calculating inverse-variance-weighted effect sizes for each gene.
+meta_pvalues_across_diseases <- function(meta_dfs, 
+                                         min_p = 2e-16) {
   
+  # Replace exact zero p-values with a small positive value
   fix_p <- function(p) {
     p[p == 0] <- min_p
     p
   }
   
-  combine_p <- function(p, method = c("fisher", "edgington")) {
+  # Combining available disease-level p-values using either Fisher's or Edgington's method
+  combine_p <- function(p, method = c("fisher", 
+                                      "edgington")) {
     method <- match.arg(method)
     
     p <- p |>
@@ -2483,6 +2301,8 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
       as.numeric() |>
       fix_p()
     
+    # Return missing when no diseases contribute,
+    # or the original p-value when only one is available
     if (length(p) == 0) return(NA_real_)
     if (length(p) == 1) return(p)
     
@@ -2493,11 +2313,14 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
     )
   }
   
+  # Compute an inverse-variance-weighted mean effect size
   weighted_lfc <- function(lfc, se) {
     keep <- !is.na(lfc) & !is.na(se) & se > 0
     
+    # Use the median effect when no valid standard errors exist
     if (!any(keep)) {
-      return(median(lfc, na.rm = TRUE))
+      return(median(lfc, 
+                    na.rm = TRUE))
     }
     
     w <- 1 / se[keep]^2
@@ -2505,6 +2328,8 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
     sum(w * lfc[keep]) / sum(w)
   }
   
+  # Compute the standard error associated with the
+  # inverse-variance-weighted effect estimate
   weighted_lfc_se <- function(se) {
     se <- se[!is.na(se) & se > 0]
     
@@ -2515,19 +2340,28 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
     sqrt(1 / sum(w))
   }
   
+  # Stack all disease-level results and produce one summary row per gene for all diseases
   meta_dfs |>
     dplyr::bind_rows(.id = "disease") |>
     dplyr::summarise(
+      
+      # Combining expression across diseases using two methods
       expression_fisher_p =
-        combine_p(expression_meta_p, "fisher"),
+        combine_p(expression_meta_p, 
+                  "fisher"),
       expression_edgington_p =
-        combine_p(expression_meta_p, "edgington"),
+        combine_p(expression_meta_p, 
+                  "edgington"),
       
+      # Combining splicing across diseases using two methods
       splicing_fisher_p =
-        combine_p(splicing_meta_p, "fisher"),
+        combine_p(splicing_meta_p, 
+                  "fisher"),
       splicing_edgington_p =
-        combine_p(splicing_meta_p, "edgington"),
+        combine_p(splicing_meta_p, 
+                  "edgington"),
       
+      # How many diseases contribute evidence for each signal type
       n_diseases_expression =
         sum(!is.na(expression_meta_p)),
       n_diseases_splicing =
@@ -2539,12 +2373,15 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
           se_weighted_expression
         ),
       
+      # Combining disease-level expression and splicing effects using
+      # inverse-variance weighting
       weighted_lfc_splicing =
         weighted_lfc(
           weighted_lfc_splicing,
           se_weighted_splicing
         ),
       
+      # Compute the uncertainty for the combined weighted effects
       se_weighted_expression =
         weighted_lfc_se(se_weighted_expression),
       
@@ -2553,27 +2390,36 @@ meta_pvalues_across_diseases <- function(meta_dfs, min_p = 2e-16) {
       
       .by = gene
     ) |>
+    
+    # Correct all combined p-values for multiple testing across genes
+    # method = "BH"
     dplyr::mutate(
       expression_fisher_fdr =
-        stats::p.adjust(expression_fisher_p, method = "BH"),
+        stats::p.adjust(expression_fisher_p, 
+                        method = "BH"),
       
       expression_edgington_fdr =
-        stats::p.adjust(expression_edgington_p, method = "BH"),
+        stats::p.adjust(expression_edgington_p, 
+                        method = "BH"),
       
       splicing_fisher_fdr =
-        stats::p.adjust(splicing_fisher_p, method = "BH"),
+        stats::p.adjust(splicing_fisher_p, 
+                        method = "BH"),
       
       splicing_edgington_fdr =
-        stats::p.adjust(splicing_edgington_p, method = "BH")
+        stats::p.adjust(splicing_edgington_p, 
+                        method = "BH")
     )
 }
 
-
+# Run ranked Gene Set Enrichment Analysis (GSEA, or FCS) using fgseaMultilevel
+# and returning the enrichment results as a standard data frame.
 run_fgsea_multilevel <- function(counted_ranks,
                                  pathways,
                                  scoreType = "pos",
                                  eps = 0) {
   
+  # Perform multilevel GSEA on the ranked feature statistics
   fgsea_results <- fgsea::fgseaMultilevel(
     pathways = pathways,
     stats = counted_ranks,
@@ -2586,21 +2432,26 @@ run_fgsea_multilevel <- function(counted_ranks,
 
 
 # ----  Cross-Indication Target Discovery ----
+
+# Map enriched pathway genes to ChEMBL targets and rank compounds by the
+# number of supported target genes and pathways and max_phase.
 run_chembl_targets <- function(data,
                                method = c("fora", "fgseaMultilevel"),
                                chembl,
                                gene_map,
                                padj_cutoff = 0.05) {
   
+  # Restrict the analysis to one supported enrichment method
   method <- match.arg(method)
   
-  #----------------------------------------------------------
-  # Helper: map ENSG IDs to HGNC symbols
-  #----------------------------------------------------------
-  map_ensg_to_symbol <- function(genes, gene_map) {
+  # Convert Ensembl gene IDs to HGNC symbols, removing version suffixes first.
+  # Keeping the Ensembl ID when no HGNC symbol is available.
+  map_ensg_to_symbol <- function(genes, 
+                                 gene_map) {
     tibble::tibble(gene_raw = genes) |>
       dplyr::mutate(
-        ensembl_gene_id = stringr::str_remove(gene_raw, "\\.\\d+$")
+        ensembl_gene_id = stringr::str_remove(gene_raw, 
+                                              "\\.\\d+$")
       ) |>
       dplyr::left_join(
         gene_map,
@@ -2616,11 +2467,10 @@ run_chembl_targets <- function(data,
       dplyr::pull(gene_symbol)
   }
   
-  #----------------------------------------------------------
-  # Prepare targets
-  #----------------------------------------------------------
+  # Extract significant pathway-associated genes from the selected enrichment result type (fora)
   if (method == "fora") {
     
+    # Map ORA overlapGenes from Ensembl IDs to HGNC symbols
     data <- data |>
       dplyr::mutate(
         overlapGenes = purrr::map(
@@ -2630,9 +2480,12 @@ run_chembl_targets <- function(data,
         )
       )
     
+    # Convert significant ORA pathways to one row per pathway-gene pair
     targets <- data |>
       dplyr::filter(padj < padj_cutoff) |>
-      dplyr::select(pathway, padj, overlapGenes) |>
+      dplyr::select(pathway, 
+                    padj, 
+                    overlapGenes) |>
       tidyr::unnest_longer(overlapGenes) |>
       dplyr::rename(gene = overlapGenes) |>
       dplyr::mutate(
@@ -2643,6 +2496,7 @@ run_chembl_targets <- function(data,
     
   } else {
     
+    # Map GSEA leadingEdge genes from Ensembl IDs to HGNC symbols 
     data <- data |>
       dplyr::mutate(
         leadingEdge = purrr::map(
@@ -2652,13 +2506,21 @@ run_chembl_targets <- function(data,
         )
       )
     
+    # Convert significant GSEA pathways to one row per
+    # leading-edge pathway-gene pair
     targets <- data |>
       dplyr::filter(padj < padj_cutoff) |>
-      dplyr::select(pathway, padj, NES, leadingEdge) |>
+      dplyr::select(pathway, 
+                    padj, 
+                    NES, 
+                    leadingEdge) |>
       tidyr::unnest_longer(leadingEdge) |>
       dplyr::rename(gene = leadingEdge) |>
       dplyr::mutate(
         source = "fgseaMultilevel",
+        
+        # Using the sign of the normalized enrichment score
+        # to describe pathway enrichment direction
         direction = dplyr::case_when(
           NES > 0 ~ "up_enriched",
           NES < 0 ~ "down_enriched",
@@ -2667,30 +2529,33 @@ run_chembl_targets <- function(data,
       )
   }
   
-  #----------------------------------------------------------
-  # ChEMBL join
-  #----------------------------------------------------------
+  # Standardize the ChEMBL target symbol column before joining
   chembl <- chembl |>
     dplyr::rename(gene = hgnc_symbol)
   
+  # Retain enriched genes that match a ChEMBL target
   hits <- targets |>
-    dplyr::filter(!is.na(gene), gene != "") |>
+    dplyr::filter(!is.na(gene), 
+                  gene != "") |>
     dplyr::inner_join(
       chembl,
       by = "gene"
     )
   
-  #----------------------------------------------------------
-  # Compound ranking
-  #----------------------------------------------------------
+
+  # Summarize and rank compounds by the breadth of their pathway and target-gene support
   compound_scores <- hits |>
     dplyr::group_by(compound_chembl_id) |>
     dplyr::summarise(
       max_phase = dplyr::first(phase),
       n_target_genes = dplyr::n_distinct(gene),
       n_pathways = dplyr::n_distinct(pathway),
-      target_genes = paste(sort(unique(gene)), collapse = ";"),
-      pathways = paste(sort(unique(pathway)), collapse = ";"),
+      
+      # Store the unique supporting genes and pathways for interpretation
+      target_genes = paste(sort(unique(gene)), 
+                           collapse = ";"),
+      pathways = paste(sort(unique(pathway)), 
+                       collapse = ";"),
       .groups = "drop"
     ) |>
     dplyr::arrange(
@@ -2698,6 +2563,7 @@ run_chembl_targets <- function(data,
       dplyr::desc(n_target_genes)
     )
   
+  # Return the pathway-level targets, ChEMBL matches, and compound-level ranking
   list(
     targets = targets,
     hits = hits,
