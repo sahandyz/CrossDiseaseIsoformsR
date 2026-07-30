@@ -287,7 +287,8 @@ multiLevel_res_freq_sp <- run_chembl_targets(
 
 combined_analyses_drug <- inner_join(comp_scores_ed_ex,
                                      comp_scores_freq_ex, 
-                                     by = "compound_chembl_id")
+                                     by = c("compound_chembl_id", "max_phase")) |> 
+  dplyr::filter(max_phase > 2)
 
 
 
