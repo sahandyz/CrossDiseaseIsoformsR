@@ -19,10 +19,7 @@ cumu_d9_s6_gsList <- geneSetSimplifyR(geneSetsList = readr::read_rds("data/fgsea
                                       removeFirstWord = TRUE)
 #saveRDS(cumu_d9_s6_gsList, "data/geneSetSimplifyR_objects/cumu_d9_s6_gsList.rds")
 
-# updated_cumu_d4_s4_gsList <- readRDS("data/geneSetSimplifyR_objects/cumu_d4_s4_gsList_new_labels.rds")
-# cumu_d9_s6_gsList <- readRDS("data/geneSetSimplifyR_objects/cumu_d9_s6_gsList.rds")
 
-# Lenient cut-off
 # Find appropriate split and thereby clustering resolution
 cumu_d9_s5_Clustree <- plotClustree(updated_cumu_d9_s5_gsList) +
   ggtitle("Gene-set Clustree of cut-off with 9 diseases and 5 studies")
@@ -51,9 +48,9 @@ plotClusterLabels(
   geneSetsList = cumu_d9_s5_gsList,
   resolution = 1.1,
   clusterNumber = 17,
-  maxChar = 35 # shorten gene-set names to fit in vignette
+  maxChar = 35 
 ) +
-  theme_bw(base_size = 12) # make font smaller to fit in vignette
+  theme_bw(base_size = 12)
 
 updated_cumu_d9_s5_gsList <- updateClusterLabels(
   geneSetsList = cumu_d9_s5_gsList,
@@ -194,10 +191,10 @@ plotProportions(
 plotClusterLabels(
   geneSetsList = cumu_d9_s6_gsList,
   resolution = 0.6,
-  clusterNumber = 15, # Try 15 again later
-  maxChar = 35 # shorten gene-set names to fit in vignette
+  clusterNumber = 15,
+  maxChar = 35
 ) +
-  theme_bw(base_size = 12) # make font smaller to fit in vignette
+  theme_bw(base_size = 12)
 
 updated_cumu_d9_s6_gsList <- updateClusterLabels(
   geneSetsList = cumu_d9_s6_gsList,

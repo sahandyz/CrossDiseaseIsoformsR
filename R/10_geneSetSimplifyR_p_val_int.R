@@ -21,7 +21,7 @@ plotProportions(fisher_gs_list,
 plotClusterLabels(
   geneSetsList = fisher_gs_list,
   resolution = 0.6,
-  clusterNumber = 17, # use label 14 as example in paper
+  clusterNumber = 17,
   maxChar = 35 
 ) +
   theme_bw(base_size = 12)
@@ -140,6 +140,7 @@ plotProportions(
 
 
 ### --- Edginton --- ### Res 1.6
+# Using basic vignette workflow of geneSetSimplifyR
 plotClustree(edgingtons_gs_list) + 
   ggtitle("Gene-set Clustree of Edgingtons p-value aggregation method")
 

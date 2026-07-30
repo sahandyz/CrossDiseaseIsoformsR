@@ -2,28 +2,6 @@
 source("R/00_functions.R")
 
 # Reading in a list of data frames
-# dfs <- list(
-#   AD = readr::read_rds("data/paired_diff_archs4/AD_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   CVD = readr::read_rds("data/paired_diff_archs4/CVD_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   COPD = readr::read_rds("data/paired_diff_archs4/COPD_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   OB = readr::read_rds("data/paired_diff_archs4/OB_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   RA = readr::read_rds("data/paired_diff_archs4/RA_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   T2D = readr::read_rds("data/paired_diff_archs4/T2D_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   TB = readr::read_rds("data/paired_diff_archs4/TB_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   IBD = readr::read_rds("data/paired_diff_archs4/IBD_paired_diff.rds") |> 
-#     combine_lists_to_df(),
-#   CANCERS = readr::read_rds("data/paired_diff_archs4/Cancers_paired_diff_5MAY.rds") |> 
-#     combine_lists_to_df() |> 
-#     dplyr::mutate(gene = stringr::str_remove(gene, "\\.\\d+$"))
-# )
-
 dfsV2 <- list(
   AD = readr::read_rds("data/pairedV2_diff_archs4/AD_paired_diff.rds") |> 
     combine_lists_to_df(),

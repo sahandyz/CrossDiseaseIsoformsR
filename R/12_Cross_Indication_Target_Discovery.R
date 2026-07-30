@@ -1,72 +1,6 @@
 # Sourcing functions
 source("R/00_functions.R")
 
-# Read ChEMBL
-#chembl_db <- readr::read_tsv("/home/databases/ChEMBL/02_ChEMBL_drug_gene_interactions.tsv")
-
-# Load saved mapping of ensg to symbols
-gene_map <- readRDS("data/ensg_to_symbol/gene_mapping.rds")
-
-# Intersection with Edgingtons p-val aggregation results
-multiLevel_res_ed_sp <- run_chembl_targets(
-  data = readRDS("data/formal_pvalue_fgseaMulti/fgsea_sp_edgintons_V2.rds"),
-  method = "fgseaMultilevel",
-  chembl = df,
-  gene_map = gene_map,
-  padj_cutoff = 0.05
-)
-
-# Intersection with Edgingtons p-val aggregation results
-multiLevel_res_ed_ex <- run_chembl_targets(
-  data = readRDS("data/formal_pvalue_fgseaMulti/fgsea_expr_edgintons_V2.rds"),
-  method = "fgseaMultilevel",
-  chembl = df,
-  gene_map = gene_map,
-  padj_cutoff = 0.05
-)
-
-# Intersection with Edgingtons p-val aggregation results
-multiLevel_res_freq_ex <- run_chembl_targets(
-  data = readRDS("data/cut_off_fgsea_objects/fgsea_cumu_d9_s6_genes.rds"),
-  method = "fora",
-  chembl = df,
-  gene_map = gene_map,
-  padj_cutoff = 0.05
-)
-
-# Intersection with Edgingtons p-val aggregation results
-multiLevel_res_freq_sp <- run_chembl_targets(
-  data = readRDS("data/cut_off_fgsea_objects/fgsea_cumu_d9_s6_isoforms.rds"),
-  method = "fora",
-  chembl = df,
-  gene_map = gene_map,
-  padj_cutoff = 0.05
-)
-
-
-
-comp_scores <- multiLevel_res$compound_scores
-
-top_50 <- multiLevel_res$compound_scores |> 
-  dplyr::slice_head(n = 50)
-
-multiLevel_res$hits |> 
-  dplyr::slice_head(n = 10)
-
-multiLevel_res$targets |> 
-  dplyr::arrange(desc(NES)) |> 
-  dplyr::slice_head(n = 10)
-
-multiLevel_res$targets |> dplyr::arrange(NES)
-
-
-library(readr)
-library(dplyr)
-library(tidyr)
-
-compoundinfo <- read_tsv("/home/databases/CMap_links_2020/compoundinfo_beta.txt", show_col_types = FALSE)
-
-
 library(httr)
 library(jsonlite)
 library(dplyr)
@@ -291,6 +225,70 @@ df <- mechanism_df |>
 
 write.csv(
   df,
-  "chembl_human_mechanisms.csv",
+  "data/drug_repurposing/chembl_human_mechanisms.csv",
   row.names = FALSE
 )
+
+saveRDS(df,
+        "data/drug_repurposing/chembl_human_mechanisms.rds")
+
+
+# Intersection with Edgingtons p-val aggregation results
+multiLevel_res_ed_sp <- run_chembl_targets(
+  data = readRDS("data/formal_pvalue_fgseaMulti/fgsea_sp_edgintons_V2.rds"),
+  method = "fgseaMultilevel",
+  chembl = df,
+  gene_map = gene_map,
+  padj_cutoff = 0.05
+)
+
+# Intersection with Edgingtons p-val aggregation results
+multiLevel_res_ed_ex <- run_chembl_targets(
+  data = readRDS("data/formal_pvalue_fgseaMulti/fgsea_expr_edgintons_V2.rds"),
+  method = "fgseaMultilevel",
+  chembl = df,
+  gene_map = gene_map,
+  padj_cutoff = 0.05
+)
+
+comp_scores_ed_ex <- multiLevel_res_ed_ex$compound_scores
+
+top_50_ed_ex <- multiLevel_res_ed_ex$compound_scores |> 
+  dplyr::slice_head(n = 50)
+
+multiLevel_res_ed_ex$hits |> 
+  dplyr::slice_head(n = 10)
+
+multiLevel_res_ed_ex$targets |> 
+  dplyr::arrange(desc(NES)) |> 
+  dplyr::slice_head(n = 10)
+
+multiLevel_res$targets |> dplyr::arrange(NES)
+
+# Intersection with Edgingtons p-val aggregation results
+multiLevel_res_freq_ex <- run_chembl_targets(
+  data = readRDS("data/cut_off_fgsea_objects/fgsea_cumu_d9_s6_genes.rds"),
+  method = "fora",
+  chembl = df,
+  gene_map = gene_map,
+  padj_cutoff = 0.05
+)
+
+comp_scores_freq_ex <- multiLevel_res_freq_ex$compound_scores
+
+# Intersection with Edgingtons p-val aggregation results
+multiLevel_res_freq_sp <- run_chembl_targets(
+  data = readRDS("data/cut_off_fgsea_objects/fgsea_cumu_d9_s6_isoforms.rds"),
+  method = "fora",
+  chembl = df,
+  gene_map = gene_map,
+  padj_cutoff = 0.05
+)
+
+combined_analyses_drug <- inner_join(comp_scores_ed_ex,
+                                     comp_scores_freq_ex, 
+                                     by = "compound_chembl_id")
+
+
+
+
