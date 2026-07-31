@@ -2369,7 +2369,7 @@ meta_pvalues_across_diseases <- function(meta_dfs,
       
       weighted_lfc_expression =
         weighted_lfc(
-          weighted_lfc_expression,
+          median_lfc_expression,
           se_weighted_expression
         ),
       
@@ -2377,7 +2377,7 @@ meta_pvalues_across_diseases <- function(meta_dfs,
       # inverse-variance weighting
       weighted_lfc_splicing =
         weighted_lfc(
-          weighted_lfc_splicing,
+          median_lfc_splicing,
           se_weighted_splicing
         ),
       
