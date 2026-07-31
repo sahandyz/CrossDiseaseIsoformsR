@@ -42,8 +42,7 @@ The overall workflow consists of:
 
 The analysis relies on several R packages, including:
 
-- **DESeq2**
-- **DEXSeq**
+- **pairedGSEA**
 - **fgsea**
 - **geneSetSimplifyR**
 - **msigdbr**
