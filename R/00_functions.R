@@ -1113,6 +1113,8 @@ plot_summary_feature_boxplots <- function(
         drop = FALSE
       ) +
       ggplot2::scale_y_log10(
+        limits = c(1, 
+                   NA),
         breaks = c(1, 
                    11, 
                    101, 
